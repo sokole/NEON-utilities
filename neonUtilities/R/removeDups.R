@@ -30,17 +30,17 @@ removeDups <- function(data, variables, table) {
   # Initiate messages
   messages <- NA
   
-  # Initiate duplicateRecordQF field at 0
-  data$duplicateRecordQF <- 0
-  
   # check table matching
   if(length(which(variables$table==table))==0) {
     stop("Table name does not match any table in variables file.")
   }
   
-
+  # remove fields not published
+  if(length(which(variables$downloadPkg=="none"))>0) {
+    variables <- variables[which(variables$downloadPkg!="none"),]
+  }
+  
   # check field names
-
   if(!all(names(data) %in% variables$fieldName[which(variables$table==table)]) |
      !all(variables$fieldName[which(variables$table==table)] %in% names(data))) {
     stop("Field names in data do not match variables file.")
@@ -51,6 +51,9 @@ removeDups <- function(data, variables, table) {
   if(length(key)==0) {
     stop("No primary key identified in variables file.")
   }
+  
+  # Initiate duplicateRecordQF field at 0
+  data$duplicateRecordQF <- 0
   
   # convert key fields to character (is this needed?)
   if(length(key)>1) {
