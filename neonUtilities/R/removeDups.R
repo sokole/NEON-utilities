@@ -30,6 +30,10 @@ removeDups <- function(data, variables, table) {
   # Initiate messages
   messages <- NA
   
+  # ensure data frames
+  variables <- as.data.frame(variables)
+  data <- as.data.frame(data)
+  
   # check table matching
   if(length(which(variables$table==table))==0) {
     stop("Table name does not match any table in variables file.")
