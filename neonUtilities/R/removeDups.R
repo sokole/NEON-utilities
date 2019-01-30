@@ -31,8 +31,8 @@ removeDups <- function(data, variables, table) {
   messages <- NA
   
   # ensure data frames
-  variables <- as.data.frame(variables)
-  data <- as.data.frame(data)
+  variables <- as.data.frame(variables, stringsAsFactors=F)
+  data <- as.data.frame(data, stringsAsFactors=F)
   
   # check table matching
   if(length(which(variables$table==table))==0) {
@@ -79,7 +79,7 @@ removeDups <- function(data, variables, table) {
   
   # convert all data to lowercase for comparison purposes
   data.low <- apply(data, 2, tolower)
-  data.low <- data.frame(data.low)
+  data.low <- data.frame(data.low, stringsAsFactors=F)
   
   # convert any empty strings to NAs
   data.low[data.low==''] <- NA
