@@ -185,8 +185,9 @@ removeDups <- function(data, variables, table) {
   if(nrow(unique(cbind(data.low[,key])))!=nrow(data.low)) {
     utils::setTxtProgressBar(pb, 1)
     close(pb)
-    cat(ct, " resolveable duplicates merged to create ", length(which(data$duplicateRecordQF==1)), 
-        " records flagged with duplicateRecordQF=1\n", length(which(data$duplicateRecordQF==2)), 
+    cat(ct, " resolveable duplicates merged into matching records\n", length(which(data$duplicateRecordQF==1)), 
+        " resolved records flagged with duplicateRecordQF=1\n", 
+        length(which(data$duplicateRecordQF==2)), 
         " unresolveable duplicates flagged with duplicateRecordQF=2", sep="")
   }
   # remove key value field and return data
