@@ -95,8 +95,8 @@ removeDups <- function(data, variables, table) {
   } else {
     
     # subset to only the records with duplicate values in the key fields
-    data.sub <- data.low[order(union(which(duplicated(data.low[,key])),
-                                        which(duplicated(data.low[,key], fromLast=T)))),]
+    data.sub <- data.low[union(which(duplicated(data.low[,key])),
+                                        which(duplicated(data.low[,key], fromLast=T))),]
     
     # iterate over unique key values
     dup.keys <- cbind(unique(data.sub[,key]))
