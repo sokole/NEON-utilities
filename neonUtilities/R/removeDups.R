@@ -100,6 +100,10 @@ removeDups <- function(data, variables, table) {
     
     # iterate over unique key values
     dup.keys <- cbind(unique(data.sub[,key]))
+    na.check <- apply(dup.keys, 2, FUN=function(x){all(!is.na(x))})
+    if(!all(na.check==T)) {
+      cat("Primary key fields contain NA values and/or empty strings. Results may be unreliable; check input data carefully.\n")
+    }
     cat(nrow(dup.keys), "duplicated key values found, representing",
         nrow(data.sub), "non-unique records. Attempting to resolve.\n")
     pb <- utils::txtProgressBar(style=3)
