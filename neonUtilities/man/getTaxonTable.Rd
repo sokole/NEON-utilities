@@ -4,8 +4,7 @@
 \alias{getTaxonTable}
 \title{Get NEON taxon table}
 \usage{
-getTaxonTable(taxonType = NA, recordReturnLimit = NA,
-  stream = "true")
+getTaxonTable(taxonType = NA, recordReturnLimit = NA, stream = "true")
 }
 \arguments{
 \item{taxonType}{Character string for the taxonTypeCode. Must be one of ALGAE, BEETLE, BIRD,
@@ -29,8 +28,8 @@ enduser.
 # HERPETOLOGY, MACROINVERTEBRATE, MOSQUITO, MOSQUITO_PATHOGENS,
 # SMALL_MAMMAL, PLANT, TICK
 #################################
-# return the first 10 fish records
-taxa_table <- getTaxonTable('FISH', recordReturnLimit = 10)
+# return the first 4 fish records
+taxa_table <- getTaxonTable('FISH', recordReturnLimit = 4)
 
 # return all mammal taxa records
 taxa_table <- getTaxonTable('SMALL_MAMMAL')

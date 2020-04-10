@@ -4,8 +4,7 @@
 \alias{byFileAOP}
 \title{Serially download all AOP files for a given site, year, and product}
 \usage{
-byFileAOP(dpID, site = "SJER", year = "2017", check.size = TRUE,
-  savepath = NA)
+byFileAOP(dpID, site, year, check.size = TRUE, savepath = NA)
 }
 \arguments{
 \item{dpID}{The identifier of the NEON data product to pull, in the form DPL.PRNUM.REV, e.g. DP1.10023.001}
@@ -14,7 +13,7 @@ byFileAOP(dpID, site = "SJER", year = "2017", check.size = TRUE,
 
 \item{year}{The four-digit year to search for data. Defaults to 2017.}
 
-\item{check.size}{T or F, should the user be told the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.}
+\item{check.size}{T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.}
 
 \item{savepath}{The file path to download to. Defaults to NA, in which case the working directory is used.}
 }

@@ -4,17 +4,23 @@
 \alias{getDatatable}
 \title{Get NEON data table}
 \usage{
-getDatatable(dpid = NA, data_table_name = NA,
-  sample_location_list = NA, sample_location_type = "siteID",
-  sample_date_min = "2012-01-01", sample_date_max = Sys.Date(),
-  sample_date_format = "\%Y-\%m-\%d", data_package_type = "basic",
+getDatatable(
+  dpid = NA,
+  data_table_name = NA,
+  sample_location_list = NA,
+  sample_location_type = "siteID",
+  sample_date_min = "2012-01-01",
+  sample_date_max = Sys.Date(),
+  sample_date_format = "\%Y-\%m-\%d",
+  data_package_type = "basic",
   url_prefix_data = "https://data.neonscience.org/api/v0/data/",
-  url_prefix_products = "https://data.neonscience.org/api/v0/products/")
+  url_prefix_products = "https://data.neonscience.org/api/v0/products/"
+)
 }
 \arguments{
 \item{dpid}{character sting for NEON data product ID}
 
-\item{data_table_name}{character sting for name of the data table to download, e.g., 'sls_soilCoreCollection' (with or without the _pub suffix)}
+\item{data_table_name}{character sting for name of the data table to download, e.g., 'sls_soilCoreCollection'}
 
 \item{sample_location_list}{list of sites, domains, etc. If NA, retrieve all data for the given data table / dpid combination.}
 
@@ -39,13 +45,13 @@ data frame with selected NEON data
 This is a function to retrieve a data table
 from the NEON data portal for sites and dates provided by the
 enduser. NOTE that this function only works for NEON
-Observation System (OS) data products
+Observation System (OS) data products, and only for select tables
 }
 \examples{
 sls_soilCoreCollection <- getDatatable(
   sample_location_list = c('CPER','TALL'),
   sample_date_min = '2014-01-01',
-  sample_date_max = '2014-06-01',
+  sample_date_max = '2014-02-01',
   dpid = "DP1.10086.001",
   data_table_name = 'sls_soilCoreCollection')
 

@@ -13,6 +13,8 @@ This package was developed on top of the deprecated `neonDataStackR` package; ch
 
 This package is under development - please post any issues [here](https://github.com/NEONScience/NEON-utilities/issues) and tag @chrlaney and/or @cklunch.
 
+To get citation details for citing the `neonUtilities` package in a publication, run `citation("neonUtilities")` in R.
+
 <!-- ****** Usage ****** -->
 Usage
 -----
@@ -52,7 +54,7 @@ getPackage(dpID = "DP1.10055.001", site_code = "JORN", year_month = "2017-05", p
 {
 # Herbaceous clip harvest data, from all sites and months for which it is currently available
 zipsByProduct(dpID="DP1.10023.001", site="all", package="basic", check.size=T)
-stackByTable(paste0(getwd(), "/filesToStack10023"), folder=T)
+stackByTable(paste0(getwd(), "/filesToStack10023"))
 }
 ```
 
@@ -61,6 +63,15 @@ stackByTable(paste0(getwd(), "/filesToStack10023"), folder=T)
 ```
 bird <- loadByProduct(dpID="DP1.10003.001", site="all", package="expanded")
 names(bird)
+
+# To get each table in the list as an independent object, outside of the list:
+list2env(bird, .GlobalEnv)
+```
+
+Both `zipsByProduct()` and `loadByProduct()` can also subset by sites and date range:
+
+```
+wq <- loadByProduct(dpID="DP1.20288.001", site=c("ARIK","POSE"), startdate="2018-04", enddate="2018-08")
 ```
 
 `byFileAOP()` pulls data from the NEON API, specifically for remote sensing (AOP) data. This function preserves the file directory hierarchy that AOP files are typically stored in, making it easier to navigate a large number of downloaded files.
@@ -108,6 +119,77 @@ Disclaimer
 <!-- ****** Change Log ****** -->
 Change Log
 ----------
+
+#### 2020-04-09 v1.3.4
+----------
+Bug fixes:
+* `byFileAOP()` and `byTileAOP()` escape from infinite loops if availability is in error
+* file cleanup after `stackByTable()` deletes only files that went into the stacking
+* water quality (DP1.20288.001) error handling fixed
+* field spectra (DP1.30012.001) handling enabled - AOP functions error cleanly, OS/IS functions proceed
+* `stackEddy()` works on expanded package data again
+* `byTileAOP()` prevents conversion of coordinates to unreadable formats
+* `byTileAOP()` correctly handles sites that cross UTM zones
+* `byFileAOP()` and `byTileAOP()` handle download for sites that are included in other sites' flight boxes
+* `loadByProduct()` handles missing sensor_positions and readme files
+
+Enhancements:
+* `footRaster()` scales raster of flux footprint to geographical coordinates
+* `zipsByProduct()` regenerates URLs if they expire
+
+
+#### 2020-01-07 v1.3.3
+----------
+Bug fixes:
+* readme file retention now works with `avg` input in `zipsByProduct()`
+* fields added by `stackByTable()` now appear in variables file
+* regularized package citation
+
+Enhancements:
+* variables, validation, readme, and sensor_positions file names now include data product number
+
+
+#### 2019-12-02 v1.3.2
+----------
+Enhancements:
+* `stackByTable()` optionally uses parallel processing
+* `stackByTable()` preserves readme and sensor_positions files
+* `stackByTable()` appends a new column containing the publication time stamp
+* `stackByTable()` no longer requires `folder` input
+* `loadByProduct()` detects data types (numeric, character, date) based on variables file
+
+
+#### 2019-08-02 v1.3.1
+-----------
+Bug fixes:
+* moved `rhdf5` from Imports to Suggests for smoother installation
+* fixed expected encoding in `stackByTable()` to UTF-8
+
+
+#### 2019-07-05 v1.3.0
+-----------
+Enhancements:
+* added `stackEddy()` to extract and merge data from flux data HDF5 files (DP4.00200.001)
+
+
+#### 2019-05-21 v1.2.2
+-----------
+Bug fixes:
+* working progress bar in `byFileAOP()` and `byTileAOP()`
+
+Enhancements:
+* initial version of `zipsByURI()` to download via URLs within data
+
+
+#### 2019-03-04 v1.2.1
+-----------
+Bug fixes:
+* fixed bug in `stackByTable()` that deleted existing files when using `savepath` argument
+* fixed bug in `getDatatable()` that created incorrect urls
+
+Enhancements:
+* enabled date and site subsetting in `zipsByProduct()`
+
 
 #### 2019-01-24 v1.2.0
 -----------
