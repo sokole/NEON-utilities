@@ -26,15 +26,14 @@
 ##############################################################################################
 
 makePosColumns <- function(d, datafl, site){
-  requireNamespace('dplyr', quietly = TRUE)
-  requireNamespace("magrittr", quietly = TRUE)
   
   datafl.splitFile <- strsplit(x = datafl, split = "\\/")
   datafl.splitName <- strsplit(x = datafl.splitFile[[1]][length(datafl.splitFile[[1]])], split = "\\.")
 
   sensor_positions <- grepl('sensor_positions', datafl.splitName)
   
-  if((datafl.splitName[[1]][4]=="DP4") && (datafl.splitName[[1]][5]=="00130")){return(d)}
+  if((datafl.splitName[[1]][4]=="DP4") && (datafl.splitName[[1]][5]=="00130") &
+     FALSE %in% sensor_positions){return(d)}
   
   nc <- ncol(d)
   if(length(datafl.splitName[[1]]) %in% c(12,14) || (TRUE %in% sensor_positions)){
@@ -47,31 +46,12 @@ makePosColumns <- function(d, datafl, site){
       verPos <- 8
     }
     if(TRUE %in% sensor_positions) {
-      # Make sure there is a start/end column, if not create one with NAs
-      if("start" %in% names(d) & "end" %in% names(d)) {
-        d <- d 
-      } else { 
-        d$start <- rep(NA, nrow(d))
-        d$end <- rep(NA, nrow(d))
-      }
-      
-      # Make sure there is a referenceStart/end column, if not create one with NAs
-      if("referenceStart" %in% names(d) & "referenceEnd" %in% names(d)) {
-        d <- d 
-      } else { 
-        d$referenceStart <- rep(NA, nrow(d))
-        d$referenceEnd <- rep(NA, nrow(d))
-      }
-      d <- d %>%
-        dplyr::mutate(siteID = site) %>%
-        dplyr::select('siteID', 'HOR.VER', 'start', 'end',
-                      'referenceStart', 'referenceEnd', 'xOffset', 'yOffset', 'zOffset', 
-                      'pitch', 'roll', 'azimuth', 'referenceLatitude', 'referenceLongitude', 'referenceElevation')
+      d$siteID <- rep(site, nrow(d))
+      d <- data.table::setcolorder(d, c(ncol(d), 1:I(ncol(d)-1)))
     } else {
       if(!("siteID" %in% names(d))){
-        d <- d %>%
-          dplyr::mutate(domainID = as.character(unlist(datafl.splitName)[2]),
-                        siteID = as.character(unlist(datafl.splitName)[3]))
+        d$domainID <- as.character(unlist(datafl.splitName)[2])
+        d$siteID <- as.character(unlist(datafl.splitName)[3])
       }
       d$horizontalPosition <- as.character(rep(as.character(datafl.splitName[[1]][horPos]), nrow(d)))
       d$verticalPosition <- as.character(rep(as.character(datafl.splitName[[1]][verPos]), nrow(d)))

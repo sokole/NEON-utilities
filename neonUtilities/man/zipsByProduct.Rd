@@ -10,10 +10,15 @@ zipsByProduct(
   startdate = NA,
   enddate = NA,
   package = "basic",
-  avg = "all",
+  release = "current",
+  timeIndex = "all",
+  tabl = "all",
   check.size = TRUE,
+  include.provisional = FALSE,
   savepath = NA,
-  load = F
+  load = F,
+  token = NA_character_,
+  avg = NA
 )
 }
 \arguments{
@@ -27,13 +32,23 @@ zipsByProduct(
 
 \item{package}{Either 'basic' or 'expanded', indicating which data package to download. Defaults to basic.}
 
-\item{avg}{Either the string 'all', or the averaging interval to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.}
+\item{release}{The data release to be downloaded; either 'current' or the name of a release, e.g. 'RELEASE-2021'. 'current' returns the most recent release, as well as provisional data if include.provisional is set to TRUE. To download only provisional data, use release='PROVISIONAL'. Defaults to 'current'.}
+
+\item{timeIndex}{Either the string 'all', or the time index of data to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.}
+
+\item{tabl}{Either the string 'all', or the name of a single data table to download. Defaults to 'all'.}
 
 \item{check.size}{T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.}
+
+\item{include.provisional}{T or F, should provisional data be included in downloaded files? Defaults to F. See https://www.neonscience.org/data-samples/data-management/data-revisions-releases for details on the difference between provisional and released data.}
 
 \item{savepath}{The location to save the output files to}
 
 \item{load}{T or F, are files saved locally or loaded directly? Used silently with loadByProduct(), do not set manually.}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts). Optional.}
+
+\item{avg}{Deprecated; use timeIndex}
 }
 \value{
 A folder in the working directory (or in savepath, if specified), containing all zip files meeting query criteria.
@@ -44,6 +59,7 @@ Pull files from the NEON API, by data product, in a structure that will allow th
 \details{
 All available data meeting the query criteria will be downloaded. Most data products are collected at only a subset of sites, and dates of collection vary. Consult the NEON data portal for sampling details.
 Dates are specified only to the month because NEON data are provided in monthly packages. Any month included in the search criteria will be included in the download. Start and end date are inclusive.
+timeIndex: NEON sensor data are published at pre-determined averaging intervals, usually 1 and 30 minutes. The default download includes all available data. Download volume can be greatly reduced by downloading only the 30 minute files, if higher frequency data are not needed. Use getTimeIndex() to find the available averaging intervals for each sensor data product.
 }
 \examples{
 \dontrun{

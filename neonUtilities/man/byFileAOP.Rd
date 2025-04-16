@@ -4,7 +4,15 @@
 \alias{byFileAOP}
 \title{Serially download all AOP files for a given site, year, and product}
 \usage{
-byFileAOP(dpID, site, year, check.size = TRUE, savepath = NA)
+byFileAOP(
+  dpID,
+  site,
+  year,
+  include.provisional = FALSE,
+  check.size = TRUE,
+  savepath = NA,
+  token = NA_character_
+)
 }
 \arguments{
 \item{dpID}{The identifier of the NEON data product to pull, in the form DPL.PRNUM.REV, e.g. DP1.10023.001}
@@ -13,9 +21,13 @@ byFileAOP(dpID, site, year, check.size = TRUE, savepath = NA)
 
 \item{year}{The four-digit year to search for data. Defaults to 2017.}
 
+\item{include.provisional}{T or F, should provisional data be included in downloaded files? Defaults to F. See https://www.neonscience.org/data-samples/data-management/data-revisions-releases for details on the difference between provisional and released data.}
+
 \item{check.size}{T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.}
 
 \item{savepath}{The file path to download to. Defaults to NA, in which case the working directory is used.}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts)}
 }
 \value{
 A folder in the working directory, containing all files meeting query criteria.

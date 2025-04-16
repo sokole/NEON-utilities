@@ -4,10 +4,14 @@
 \alias{getFileUrls}
 \title{Get and store the file names, S3 URLs, file size, and download status (default = 0) in a data frame}
 \usage{
-getFileUrls(m.urls)
+getFileUrls(m.urls, include.provisional, token = NA)
 }
 \arguments{
 \item{m.urls}{The monthly API URL for the AOP files}
+
+\item{include.provisional}{T or F, should provisional data be included in downloaded files?}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts)}
 }
 \value{
 A dataframe comprised of file names, S3 URLs, file size, and download status (default = 0)

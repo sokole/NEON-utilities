@@ -10,10 +10,16 @@ loadByProduct(
   startdate = NA,
   enddate = NA,
   package = "basic",
-  avg = "all",
+  release = "current",
+  timeIndex = "all",
+  tabl = "all",
   check.size = TRUE,
+  include.provisional = FALSE,
   nCores = 1,
-  forceParallel = FALSE
+  forceParallel = FALSE,
+  token = NA_character_,
+  useFasttime = FALSE,
+  avg = NA
 )
 }
 \arguments{
@@ -27,13 +33,25 @@ loadByProduct(
 
 \item{package}{Either 'basic' or 'expanded', indicating which data package to download. Defaults to basic.}
 
-\item{avg}{Either the string 'all', or the averaging interval to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.}
+\item{release}{The data release to be downloaded; either 'current' or the name of a release, e.g. 'RELEASE-2021'. 'current' returns the most recent release, as well as provisional data if include.provisional is set to TRUE. To download only provisional data, use release='PROVISIONAL'. Defaults to 'current'.}
+
+\item{timeIndex}{Either the string 'all', or the time index of data to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.}
+
+\item{tabl}{Either the string 'all', or the name of a single data table to download. Defaults to 'all'.}
 
 \item{check.size}{T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.}
+
+\item{include.provisional}{T or F, should provisional data be included in downloaded files? Defaults to F. See https://www.neonscience.org/data-samples/data-management/data-revisions-releases for details on the difference between provisional and released data.}
 
 \item{nCores}{The number of cores to parallelize the stacking procedure. By default it is set to a single core.}
 
 \item{forceParallel}{If the data volume to be processed does not meet minimum requirements to run in parallel, this overrides. Set to FALSE as default.}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts)}
+
+\item{useFasttime}{Should the fasttime package be used to read date-time fields? Defaults to false.}
+
+\item{avg}{Deprecated; use timeIndex}
 }
 \value{
 A named list of all the data tables in the data product downloaded, plus a validation file and a variables file, as available.

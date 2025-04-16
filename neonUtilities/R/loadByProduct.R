@@ -12,11 +12,17 @@
 #' @param startdate Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to NA.
 #' @param enddate Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to NA.
 #' @param package Either 'basic' or 'expanded', indicating which data package to download. Defaults to basic.
-#' @param avg Either the string 'all', or the averaging interval to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.
+#' @param release The data release to be downloaded; either 'current' or the name of a release, e.g. 'RELEASE-2021'. 'current' returns the most recent release, as well as provisional data if include.provisional is set to TRUE. To download only provisional data, use release='PROVISIONAL'. Defaults to 'current'.
+#' @param avg Deprecated; use timeIndex
+#' @param timeIndex Either the string 'all', or the time index of data to download, in minutes. Only applicable to sensor (IS) data. Defaults to 'all'.
+#' @param tabl Either the string 'all', or the name of a single data table to download. Defaults to 'all'.
 #' @param check.size T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.
+#' @param include.provisional T or F, should provisional data be included in downloaded files? Defaults to F. See https://www.neonscience.org/data-samples/data-management/data-revisions-releases for details on the difference between provisional and released data.
 #' @param nCores The number of cores to parallelize the stacking procedure. By default it is set to a single core.
 #' @param forceParallel If the data volume to be processed does not meet minimum requirements to run in parallel, this overrides. Set to FALSE as default.
-
+#' @param token User specific API token (generated within data.neonscience.org user accounts)
+#' @param useFasttime Should the fasttime package be used to read date-time fields? Defaults to false.
+#'
 #' @details All available data meeting the query criteria will be downloaded. Most data products are collected at only a subset of sites, and dates of collection vary. Consult the NEON data portal for sampling details.
 #' Dates are specified only to the month because NEON data are provided in monthly packages. Any month included in the search criteria will be included in the download. Start and end date are inclusive.
 
@@ -38,19 +44,22 @@
 #     original creation
 ##############################################################################################
 
-loadByProduct <- function(dpID, site="all", startdate=NA, enddate=NA, package="basic", 
-                          avg="all", check.size=TRUE, nCores=1, forceParallel=FALSE) {
-  
+loadByProduct <- function(dpID, site="all", startdate=NA, enddate=NA, package="basic",
+                          release="current", timeIndex="all", tabl="all", 
+                          check.size=TRUE, include.provisional=FALSE,
+                          nCores=1, forceParallel=FALSE, token=NA_character_, 
+                          useFasttime=FALSE, avg=NA) {
+
   # error message if package is not basic or expanded
   if(!package %in% c("basic", "expanded")) {
     stop(paste(package, "is not a valid package name. Package must be basic or expanded", sep=" "))
   }
 
   # error message if dpID isn't formatted as expected
-  if(regexpr("DP[1-4]{1}.[0-9]{5}.001", dpID)!=1) {
-    stop(paste(dpID, "is not a properly formatted data product ID. The correct format is DP#.#####.001", sep=" "))
+  if(regexpr("DP[1-4]{1}[.][0-9]{5}[.]00[1-2]{1}", dpID)[1]!=1) {
+    stop(paste(dpID, "is not a properly formatted data product ID. The correct format is DP#.#####.00#", sep=" "))
   }
-  
+
   # error message if for AOP data
   if(substring(dpID, 5, 5)==3 & dpID!="DP1.30012.001") {
     stop(paste(dpID, "is a remote sensing data product and cannot be loaded directly to R with this function. Use the byFileAOP() function to download locally.", sep=" "))
@@ -60,24 +69,36 @@ loadByProduct <- function(dpID, site="all", startdate=NA, enddate=NA, package="b
   if(dpID %in% c("DP1.00033.001", "DP1.00042.001")) {
     stop(paste(dpID, "is a phenological image product, data are hosted by Phenocam.", sep=" "))
   }
-  
+
   # error message for SAE data
   if(dpID == "DP4.00200.001"){
     stop("The bundled eddy covariance data product cannot be stacked and loaded directly from download.\nTo use these data, download with zipsByProduct() and then stack with stackEddy().")
   }
   
+  # check for fasttime package, if used
+  if(useFasttime & !requireNamespace("fasttime", quietly=T)) {
+    stop("Parameter useFasttime is TRUE but fasttime package is not installed. Install and re-try.")
+  }
+
   # create a temporary directory to save to
   temppath <- file.path(tempdir(), paste("zips", format(Sys.time(), "%Y%m%d%H%M%S"), sep=""))
   dir.create(temppath)
-  
+
   # pass the request to zipsByProduct() to download
-  zipsByProduct(dpID=dpID, site=site, startdate=startdate, enddate=enddate, package=package, 
-                avg=avg, check.size=check.size, savepath=temppath, load=TRUE)
+  zipsByProduct(dpID=dpID, site=site, startdate=startdate, enddate=enddate, package=package,
+                release=release, avg=avg, timeIndex=timeIndex, tabl=tabl, check.size=check.size, 
+                savepath=temppath, include.provisional=include.provisional, load=TRUE, token=token)
   
+  # if zipsByProduct() can't download anything, don't pass to stackByTable()
+  if(length(list.files(temppath))==0) {
+    return(invisible())
+  }
+
   # stack and load the downloaded files using stackByTable
-  out <- stackByTable(filepath=paste(temppath, "/filesToStack", substr(dpID, 5, 9), sep=""), 
-                      savepath="envt", folder=TRUE, nCores, forceParallel)
+  out <- stackByTable(filepath=paste(temppath, "/filesToStack", substr(dpID, 5, 9), sep=""),
+                      savepath="envt", folder=TRUE, nCores=nCores, 
+                      saveUnzippedFiles=FALSE, useFasttime=useFasttime)
   # Remove temppath directory
-  unlink(temppath)
+  unlink(temppath, recursive=T)
   return(out)
   }

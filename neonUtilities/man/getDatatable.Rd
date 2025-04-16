@@ -14,7 +14,8 @@ getDatatable(
   sample_date_format = "\%Y-\%m-\%d",
   data_package_type = "basic",
   url_prefix_data = "https://data.neonscience.org/api/v0/data/",
-  url_prefix_products = "https://data.neonscience.org/api/v0/products/"
+  url_prefix_products = "https://data.neonscience.org/api/v0/products/",
+  token = NA_character_
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ getDatatable(
 \item{url_prefix_data}{data endpoint for NEON API.}
 
 \item{url_prefix_products}{products endpoint for NEON API.}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts)}
 }
 \value{
 data frame with selected NEON data
@@ -46,16 +49,6 @@ This is a function to retrieve a data table
 from the NEON data portal for sites and dates provided by the
 enduser. NOTE that this function only works for NEON
 Observation System (OS) data products, and only for select tables
-}
-\examples{
-sls_soilCoreCollection <- getDatatable(
-  sample_location_list = c('CPER','TALL'),
-  sample_date_min = '2014-01-01',
-  sample_date_max = '2014-02-01',
-  dpid = "DP1.10086.001",
-  data_table_name = 'sls_soilCoreCollection')
-
-
 }
 \references{
 License: GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007

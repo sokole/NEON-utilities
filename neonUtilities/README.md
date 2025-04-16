@@ -9,9 +9,11 @@ The `neonUtilities` R package provides utilities for discovering, downloading, a
 
 `neonUtilities` is available [on CRAN](https://CRAN.R-project.org/package=neonUtilities) and most users will want to install it from there. If you want to use the current development version, you can install from GitHub, but be warned that the version here may not be stable.
 
-This package was developed on top of the deprecated `neonDataStackR` package; change logs from that package are included below.
+A cheat sheet for the `neonUtilities` package is available [here](https://www.neonscience.org/sites/default/files/cheat-sheet-neonUtilities.pdf).
 
-This package is under development - please post any issues [here](https://github.com/NEONScience/NEON-utilities/issues) and tag @chrlaney and/or @cklunch.
+See [NEON Data Tutorials](https://www.neonscience.org/resources/learning-hub/tutorials) for more information, particularly the [Get Started](https://www.neonscience.org/resources/learning-hub/tutorials/get-started-neon-data-series-data-tutorials) tutorial series.
+
+This package is actively maintained - please post any issues [here](https://github.com/NEONScience/NEON-utilities/issues) and tag @chrlaney and/or @cklunch.
 
 To get citation details for citing the `neonUtilities` package in a publication, run `citation("neonUtilities")` in R.
 
@@ -28,6 +30,18 @@ library(neonUtilities)
 ```
 
 ### Primary functions
+
+* `zipsByProduct()` Download NEON observational (OS) and instrumentation (IS) data by data product.
+* `byFileAOP()` Download NEON remote sensing data by site, year, and data product.
+* `byTileAOP()` Download NEON remote sensing data by data product, year, and UTM coordinates.
+* `stackByTable()` NEON OS and IS data are provided in separate files for each site and month of collection (and location within site, for IS). This function merges these data files cleanly for each data type. Works with data downloaded either via the NEON Data Portal or `zipsByProduct()`.
+* `readTableNEON()` Read NEON tabular data into R, detecting variable types via the `variables` file. Currently works for OS and IS data, but not eddy covariance data.
+* `loadByProduct()` Combines the actions of `zipsByProduct()`, `stackByTable()`, and `readTableNEON()` for OS and IS data. In one step, downloads, merges, and loads data into R.
+* `stackEddy()` Extracts NEON eddy covariance data from the provided HDF files and merges the resulting tabular data, similar to the IS data handling in `stackByTable()`.
+* `footRaster()` Makes a raster of the flux footprint data provided in the expanded data package for eddy covaraince.
+
+#### Short examples
+
 `stackByTable()` unzips monthly packages, finds the CSV data files, and joins them by table (e.g., 2DWSD_2min, 2DWSD_30min for 2D Wind Speed and Direction). For data products from instrumented systems that have multiple sensors placed at various heights (or depths) and/or horizontal positions away from the supporting tower, this function will create 2 columns in addition to the existing columns, one for horizontalPosition and the other for verticalPosition. This function will only work for data products that organize data in CSV files. Other data file types, such as HDF5 files from the eddy covariance system and remote sensing airborne observing platform (AOP) are not supported.
 
 
@@ -89,15 +103,18 @@ byFileAOP(dpID = "DP3.30001.001", site = "SRER", year = "2017", check.size = T)
 byTileAOP(dpID="DP3.30026.001", site="SJER", year="2017", easting=easting, northing=northing, buffer=20)
 ```
 
-`transformFileToGeoCSV()` takes any single NEON csv data file plus its respective variables file, and generates a new CSV with [GeoCSV](http://geows.ds.iris.edu/documents/GeoCSV.pdf) headers. This makes the data similar in format to data provided by organizations such as UNAVCO, and is good for embedding in a repeating script.
+`transformFileToGeoCSV()` takes any single NEON csv data file plus its respective variables file, and generates a new CSV with GeoCSV headers. This makes the data similar in format to data provided by organizations such as UNAVCO, and is good for embedding in a repeating script.
 
 ### Getting help with this package
 
-For a tutorial explaining how to use the `neonUtilities` package in more detail, including additional input options, view the [*Use the neonUtilities Package to Access NEON Data* tutorial](http://www.neonscience.org/neonDataStackR).
+For a tutorial explaining how to use the `neonUtilities` package in more detail, including additional input options, view the [*Use the neonUtilities Package to Access NEON Data* tutorial](https://www.neonscience.org/resources/learning-hub/tutorials/neondatastackr).
+
 
 ### Known issues
-* `zipsByProduct()` and `byFileAOP()` use the `download.file()` function, wrapped by the `downloader` package, and we've found in testing that `download.file()` can be finicky. Using R version > 3.4 seems to help, and if you're on Windows, using Windows 10. Feel free to contact us if you run into problems!
-* The file cleanup option in `stackByTable()` deletes the unstacked files after stacking, but it doesn't work correctly when used in combination with filtering by averaging interval (`avg=X` option in `zipsByProduct()`). This will be fixed in a future release.
+* On Windows, file paths are limited to 260 characters. In some cases, NEON data file names plus local directories will exceed this length; this is most likely when working with lab quality assurance files, which include the name of the lab in the file name. If this happens, you will see an error saying "cannot open file". Usually, you can get around this by using zipsByProduct() -> stackByTable() -> readTableNEON() to download data and load it to R, taking care to download the files to a short file directory. Reportedly, R v4.3.0+ avoids this problem; we are still testing to evaluate this.
+* On slow networks, data download can sometimes time out, particularly for the largest files, usually the remote sensing data. If your downloads take a long time and ultimately fail, try increasing the timeout in your R environment: `options(timeout=300)`. The `timeout` value is in seconds, and defaults to 60.
+* Some software security systems prevent R from downloading data from the internet. This is fairly unusual, but if you're unable to download any data using neonUtilities, and increasing the timeout doesn't help, check your security settings.
+
 
 <!-- ****** Acknowledgements ****** -->
 Credits & Acknowledgements
@@ -120,11 +137,184 @@ Disclaimer
 Change Log
 ----------
 
-#### 2020-04-09 v1.3.4
+#### 2024-12-05 v2.4.3
+* stackByTable() updated to work with data product revisions and updates affecting DP4.00132.001, DP1.20046.001, DP1.10081.002, DP1.20086.002, and DP1.20141.002
+
+
+#### 2024-04-30 v2.4.2
+Bug fixes:
+* stackEddy() skips files that don't match variables requested, rather than erroring out
+* Download re-attempts in all download functions now handle include.provisional correctly
+* Downloads by averaging interval (timeIndex) for sensor data now include science review flag files
+
+
+#### 2024-01-09 v2.4.1
+Enhancements:
+* stackEddy() can be run without API calls, using input parameter runLocal=TRUE
+
+Bug fixes:
+* stackByTable() can now handle changes to data table publication paradigm over time. As of this date this affects only DP1.10003.001, DP4.00131.001, and DP4.00132.001
+* footRaster() has been updated to handle both current and past formatting of UTM zone in DP4.00200.001 metadata
+
+
+#### 2023-10-17 v2.4.0
+Changes:
+* new parameter in download functions: include.provisional defaults to FALSE, provisional data are not included in download unless set to TRUE
+* conductivity files in reaeration and salt-based discharge data products have been re-formatted; stacking functions updated to handle these
+
+
+#### 2023-06-30 v2.3.0
+Enhancements:
+* option in stackEddy() to retrieve site, code, and CO2 validation data from H5 file attributes
+* recommended data citation added to output of download and stacking functions
+* performance improvements to stackEddy()
+* option to use the fasttime package for conversion of dates to POSIXct in stacking functions
+
+Other changes:
+* update to byTileAOP() and footRaster() to use terra package for spatial data handling; replaces raster package
+
+
+#### 2023-03-09 v2.2.1
+* Science Review Flag table added to stackEddy() outputs
+* updates to sensor position file handling to match new variable names
+
+
+#### 2022-11-15 v2.2.0
+Enhancements:
+* verbose output from `byFileAOP()` and `byTileAOP()` removed
+* updated lists of co-located terrestrial sites used for aquatic site meteorology, and co-located sites flown together by AOP
+* `getTaxonTable()` is deprecated; moved to `neonOS` package as `getTaxonList()`
+* new Science Review Flag table handling added
+
+Bug fixes:
+* `footRaster()` now allows a vector of .h5 files as input; handling updated to match `stackEddy()`
+* `byFileAOP()` and `byTileAOP()` now correctly handle the rare occurrence of multiple months of data per year
+* improved error messaging for all functions when API does not respond
+
+
+#### 2022-04-12 v2.1.4
+Enhancements:
+* `getNeonDOI()` function added; finds DOI for a given data product and release
+* `zipsByURI()` can now handle R object inputs
+
+Bug fixes:
+* column class matching fixed for lab tables
+* empty string in API token value handled
+
+
+#### 2021-12-09 v2.1.3
+Enhancements:
+* `stackByTable()`, `stackEddy()`, `byTileAOP()`, and `byFileAOP()` include issue log in outputs
+* `getIssueLog()` is also available as an independent function
+
+Bug fixes:
+* improved error messaging when no data are found
+* new error messaging if only metadata files are found
+
+
+#### 2021-09-01 v2.1.2
+Bug fixes:
+* readme file handling in `stackByTable()` was failing on new data products; fixed.
+* clean up of package dependencies
+
+
+#### 2021-07-25 v2.1.1
+Enhancements:
+* more options in `stackEddy()` variable inputs; see function documentation
+
+Bug fixes:
+* `readr` package dependency removed to resolve incompatibility with readr 2.0.0
+* rare Windows bug for special characters fixed
+* `footRaster()` orientation correction in 2.1.0 did not work; corrected again
+* `stackEddy()` time stamp handling improved for profile sensors
+
+
+#### 2021-05-19 v2.1.0
+Enhancements:
+* download by release in `zipsByProduct()` and `loadByProduct()`
+* per sample files, found in microbe community composition and field spectra, are stacked in `stackByTable()`
+* `stackFromStore()` updated to work with `neonstore` v0.4.3
+
+Bug fixes:
+* `stackEddy()` handles scenarios with only one instance of a given variable
+* `footRaster()` coordinate conversion for Alaska and Hawaii fixed
+* `footRaster()` orientation corrected
+* leading digit in 2D wind data tables is translated, with an alert, in `loadByProduct()`
+* warning message in `stackByTable()` when file paths are longer than 260 characters in Windows
+
+
+#### 2021-01-25 v2.0.1
+Bug fixes:
+* Release tag assignment in `stackByTable()` resolved in portal data downloads
+* Identification of most recent sensor positions files and lab files in `stackByTable()` resolved
+* Improved handling of failed downloads in download functions
+* Empty filler records for single days with no data removed in `stackEddy()`
+
+
+#### 2021-01-25 v2.0.0
+Major version update, corresponding to the first Release of static, DOI-citable NEON data. Older versions of neonUtilities may not work correctly with Released data. For more information, see [Releases web page](https://www.neonscience.org/data-samples/data-management/data-revisions-releases).
+
+Major changes:
+* `stackByTable()` and `stackEddy()` updated to work with new zip folder structure
+* `zipsByProduct()` updated to use `packages` API endpoint instead of pre-packaged zip files
+
+Enhancements:
+* `stackByTable()` adds release tag to stacked data when possible
+* `getDatatable()` is deprecated and functionality is moved to `loadByProduct()`. Note download by table is not recommended for new users; familiarity with the data is a prerequisite.
+
+Bug fixes:
+* `stackFromStore()` now includes the full range of input options for sensor and SAE data
+* if empty files are downloaded, `stackByTable()` skips them instead of failing. Note this is rare, the result of error in NEON publication systems.
+* coordinate conversion for BLAN locations in `byTileAOP()` updated to use latest versions of spatial packages
+
+
+#### 2021-01-06 v1.3.9
+Bug fixes:
+* fix bug in handling of .gz files in `stackEddy()`
+* fix pubdate filtering in `stackFromStore()`
+* regularize fail behavior when API is unavailable
+
+
+#### 2020-11-09 v1.3.8
+Bug fixes:
+* handles .gz files in `stackEddy()`
+* `footRaster()` update to work with latest rgdal
+
+Enhancements:
+* new `stackFromStore()` function to stack files from a local archive
+* aquatic site requests can download meteorological data from nearby terrestrial sites
+* `stackEddy()` accepts a vector of filepaths to .h5 files
+
+
+#### 2020-09-24 v1.3.7
+Bug fixes:
+* removed gdata package dependency
+
+Enhancements:
+* input `avg` to `zipsByProduct()` changed to `timeIndex` for clarity
+
+
+#### 2020-07-26 v1.3.6
+Bug fixes:
+* unzipped file deletion no longer crashes on large numbers of files
+
+Enhancements:
+* compatible with new format of sensor positions files
+* zipsByURI() works with fastq files
+* lab-specific tables are stacked as well as site-specific tables
+
+
+#### 2020-05-29 v1.3.5
+----------
+Bug fixes:
+* `loadByProduct()` automatic deletion of temporary files restored
+* when API rate limit is reached, `zipsByProduct()` pauses to reset
+
+
+#### 2020-04-29 v1.3.4
 ----------
 Bug fixes:
 * `byFileAOP()` and `byTileAOP()` escape from infinite loops if availability is in error
-* file cleanup after `stackByTable()` deletes only files that went into the stacking
 * water quality (DP1.20288.001) error handling fixed
 * field spectra (DP1.30012.001) handling enabled - AOP functions error cleanly, OS/IS functions proceed
 * `stackEddy()` works on expanded package data again
@@ -132,8 +322,10 @@ Bug fixes:
 * `byTileAOP()` correctly handles sites that cross UTM zones
 * `byFileAOP()` and `byTileAOP()` handle download for sites that are included in other sites' flight boxes
 * `loadByProduct()` handles missing sensor_positions and readme files
+* encoding specified in `readTableNEON()`
 
 Enhancements:
+* download functions include option to use NEON API token
 * `footRaster()` scales raster of flux footprint to geographical coordinates
 * `zipsByProduct()` regenerates URLs if they expire
 

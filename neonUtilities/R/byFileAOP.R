@@ -12,8 +12,10 @@
 #' @param dpID The identifier of the NEON data product to pull, in the form DPL.PRNUM.REV, e.g. DP1.10023.001
 #' @param site The four-letter code of a single NEON site, e.g. 'CLBJ'.
 #' @param year The four-digit year to search for data. Defaults to 2017.
+#' @param include.provisional T or F, should provisional data be included in downloaded files? Defaults to F. See https://www.neonscience.org/data-samples/data-management/data-revisions-releases for details on the difference between provisional and released data.
 #' @param check.size T or F, should the user approve the total file size before downloading? Defaults to T. When working in batch mode, or other non-interactive workflow, use check.size=F.
 #' @param savepath The file path to download to. Defaults to NA, in which case the working directory is used.
+#' @param token User specific API token (generated within data.neonscience.org user accounts)
 
 #' @return A folder in the working directory, containing all files meeting query criteria.
 
@@ -34,11 +36,14 @@
 
 ##############################################################################################
 
-byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
+byFileAOP <- function(dpID, site, year, 
+                      include.provisional=FALSE,
+                      check.size=TRUE, savepath=NA, 
+                      token=NA_character_) {
 
   # error message if dpID isn't formatted as expected
-  if(regexpr("DP[1-4]{1}.[0-9]{5}.001",dpID)!=1) {
-    stop(paste(dpID, "is not a properly formatted data product ID. The correct format is DP#.#####.001", sep=" "))
+  if(regexpr("DP[1-4]{1}.[0-9]{5}.00[1-2]{1}",dpID)!=1) {
+    stop(paste(dpID, "is not a properly formatted data product ID. The correct format is DP#.#####.00#", sep=" "))
   }
 
   # error message if site is left blank
@@ -50,17 +55,31 @@ byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
   if(regexpr('[[:digit:]]{4}', year)!=1) {
     stop("Year is required (e.g. '2017').")
   }
-
+  
+  # if token is an empty string, set to NA
+  if(identical(token, "")) {
+    token <- NA_character_
+  }
+  
+  releases <- character()
+  
   # query the products endpoint for the product requested
-  productUrl <- paste0("http://data.neonscience.org/api/v0/products/", dpID)
-  req <- httr::GET(productUrl)
-  avail <- jsonlite::fromJSON(httr::content(req, as="text"), simplifyDataFrame=TRUE, flatten=TRUE)
+  req <- getAPI(paste("https://data.neonscience.org/api/v0/products/", dpID, sep=""), token)
+  avail <- jsonlite::fromJSON(httr::content(req, as="text", encoding="UTF-8"), 
+                              simplifyDataFrame=TRUE, flatten=TRUE)
 
   # error message if product not found
   if(!is.null(avail$error$status)) {
     stop(paste("No data found for product", dpID, sep=" "))
   }
   
+  # check that token was used
+  if(!is.na(token) & !is.null(req$headers$`x-ratelimit-limit`)) {
+    if(req$headers$`x-ratelimit-limit`==200) {
+      cat('API token was not recognized. Public rate limit applied.\n')
+    }
+  }
+
   # error message if field spectra data are attempted
   if(dpID=='DP1.30012.001') {
     stop('DP1.30012.001 is the Field spectral data product, which is published as tabular data. Use zipsByProduct() or loadByProduct() to download these data.')
@@ -70,16 +89,16 @@ byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
   if(avail$data$productScienceTeamAbbr!="AOP") {
     stop(paste(dpID, "is not a remote sensing product. Use zipsByProduct()"))
   }
-  
+
   # check for sites that are flown under the flight box of a different site
   if(site %in% shared_flights$site) {
     flightSite <- shared_flights$flightSite[which(shared_flights$site==site)]
-    if(site %in% c('TREE','CHEQ','KONA')) {
-      cat(paste(site, ' is part of the flight box for ', flightSite, 
+    if(site %in% c('TREE','CHEQ','KONA','DCFS')) {
+      cat(paste(site, ' is part of the flight box for ', flightSite,
                 '. Downloading data from ', flightSite, '.\n', sep=''))
     } else {
-      cat(paste(site, ' is an aquatic site and is sometimes included in the flight box for ', flightSite, 
-                '. Aquatic sites are not always included in flight coverage every year.\nDownloading data from ', 
+      cat(paste(site, ' is an aquatic site and is sometimes included in the flight box for ', flightSite,
+                '. Aquatic sites are not always included in flight coverage every year.\nDownloading data from ',
                 flightSite, '. Check data to confirm coverage of ', site, '.\n', sep=''))
     }
     site <- flightSite
@@ -94,21 +113,27 @@ byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
     stop("There are no data at the selected site and year.")
   }
 
-  file.urls.current <- getFileUrls(month.urls)
-  downld.size <- sum(as.numeric(as.character(file.urls.current$size)), na.rm=T)
-  downld.size.read <- humanReadable(downld.size, units = "auto", standard = "SI")
+  file.urls.current <- getFileUrls(month.urls, 
+                                   include.provisional=include.provisional, 
+                                   token=token)
+  if(is.null(file.urls.current)) {
+    message("No data files found.")
+    return(invisible())
+  }
+  downld.size <- sum(as.numeric(as.character(file.urls.current[[1]]$size)), na.rm=T)
+  downld.size.read <- convByteSize(downld.size)
 
   # ask user if they want to proceed
   # can disable this with check.size=F
   if(check.size==TRUE) {
-    resp <- readline(paste("Continuing will download", nrow(file.urls.current), "files totaling approximately",
-                           downld.size.read, ". Do you want to proceed y/n: ", sep=" "))
+    resp <- readline(paste("Continuing will download ", nrow(file.urls.current[[1]]), " files totaling approximately ",
+                           downld.size.read, ". Do you want to proceed y/n: ", sep=""))
     if(!(resp %in% c("y","Y"))) {
       stop("Download halted.")
     }
   } else {
-    cat(paste("Downloading files totaling approximately", downld.size.read, "\n", sep=" "))
-  }
+    message(paste("Downloading files totaling approximately", downld.size.read, "\n", sep=" "))
+    }
 
   # create folder in working directory to put files in
   if(is.na(savepath)) {
@@ -118,28 +143,32 @@ byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
   }
   if(dir.exists(filepath) == F) {
     dir.create(filepath, showWarnings=F)
-    }
+  }
+  
+  # set user agent
+  usera <- paste("neonUtilities/", utils::packageVersion("neonUtilities"), " R/", 
+                 R.Version()$major, ".", R.Version()$minor, " ", commandArgs()[1], 
+                 " ", R.Version()$platform, sep="")
 
   # copy zip files into folder
   j <- 1
-  messages <- list()
-  writeLines(paste("Downloading ", nrow(file.urls.current), " files", sep=""))
+  message(paste("Downloading ", nrow(file.urls.current[[1]]), " files", sep=""))
   pb <- utils::txtProgressBar(style=3)
-  utils::setTxtProgressBar(pb, 1/(nrow(file.urls.current)-1))
+  utils::setTxtProgressBar(pb, 1/(nrow(file.urls.current[[1]])-1))
 
-  counter<- 1
+  counter <- 1
 
-  while(j <= nrow(file.urls.current)) {
-    counter<- counter + 1
+  while(j <= nrow(file.urls.current[[1]])) {
 
-    if (counter > 3) {
-      cat(paste0("\nRefresh did not solve the isse. URL query for site (", site, ') and year (', year,
-                  ") failed. The API or data product requested may be unavailable at this time; check data portal (data.neonscience.org/news) for possible outage alert."))
+    if (counter > 2) {
+      message(paste0("Refresh did not solve the isse. URL query for file ", file.urls.current[[1]]$name[j],
+                  " failed. If all files fail, check data portal (data.neonscience.org/news) for possible outage alert.\n",
+                 "If file sizes are large, increase the timeout limit on your machine: options(timeout=###)"))
 
       j <- j + 1
       counter <- 1
     } else {
-      path1 <- strsplit(file.urls.current$URL[j], "\\?")[[1]][1]
+      path1 <- strsplit(file.urls.current[[1]]$URL[j], "\\?")[[1]][1]
       pathparts <- strsplit(path1, "\\/")
       path2 <- paste(pathparts[[1]][4:(length(pathparts[[1]])-1)], collapse="/")
       newpath <- paste0(filepath, "/", path2)
@@ -148,30 +177,89 @@ byFileAOP <- function(dpID, site, year, check.size=TRUE, savepath=NA) {
         dir.create(newpath, recursive = TRUE)
       }
 
-      t <- tryCatch(
-        {
-          suppressWarnings(downloader::download(file.urls.current$URL[j],
-                                                paste(newpath, file.urls.current$name[j], sep="/"),
-                                                mode="wb", quiet=T))
-        }, error = function(e) { e } )
-
-      if(inherits(t, "error")) {
-        writeLines("File could not be downloaded. URLs may have expired. Refreshing URLs list.")
-        file.urls.new <- getFileUrls(month.urls)
-        file.urls.current <- file.urls.new
-
+      if(is.na(token)) {
+        t <- tryCatch(
+          {
+            suppressWarnings(downloader::download(file.urls.current[[1]]$URL[j],
+                                                  paste(newpath, file.urls.current[[1]]$name[j], sep="/"),
+                                                  mode="wb", quiet=T, 
+                                                  headers=c("User-Agent"=usera)))
+          }, error = function(e) { e } )
       } else {
-        messages[j] <- paste(file.urls.current$name[j], "downloaded to", newpath, sep=" ")
-        j <- j + 1
-        counter <- 1
+        t <- tryCatch(
+          {
+            suppressWarnings(downloader::download(file.urls.current[[1]]$URL[j],
+                                                  paste(newpath, file.urls.current[[1]]$name[j], sep="/"),
+                                                  mode="wb", quiet=T, 
+                                                  headers=c("User-Agent"=usera,
+                                                            "X-API-Token"=token)))
+          }, error = function(e) { e } )
       }
 
-      utils::setTxtProgressBar(pb, j/(nrow(file.urls.current)-1))
+      if(inherits(t, "error")) {
+        
+        # re-attempt download once with no changes
+        if(counter < 2) {
+          message(paste0("\n", file.urls.current[[1]]$name[j], " could not be downloaded. Re-attempting."))
+          t <- tryCatch(
+            {
+              suppressWarnings(downloader::download(file.urls.current[[1]]$URL[j],
+                                                    paste(newpath, file.urls.current[[1]]$name[j], sep="/"),
+                                                    mode="wb", quiet=T,
+                                                    headers=c("User-Agent"=usera)))
+            }, error = function(e) { e } )
+          if(inherits(t, "error")) {
+            counter <- counter + 1
+          } else {
+            #message(paste(file.urls.current[[1]]$name[j], "downloaded to", newpath, sep=" "))
+            j <- j + 1
+            counter <- 1
+          }
+        } else {
+          message(paste0("\n", file.urls.current[[1]]$name[j], " could not be downloaded. URLs may have expired. Refreshing URL list."))
+          file.urls.new <- getFileUrls(month.urls, include.provisional=include.provisional, 
+                                       token=token)
+          file.urls.current <- file.urls.new
+          counter <- counter + 1
+        }
+
+      } else {
+        #message(paste(file.urls.current[[1]]$name[j], "downloaded to", newpath, sep=" "))
+        j <- j + 1
+        counter <- 1
+        releases <- c(releases, file.urls.current[[2]])
+        utils::setTxtProgressBar(pb, j/(nrow(file.urls.current[[1]])-1))
+      }
+      
     }
   }
   utils::setTxtProgressBar(pb, 1)
   close(pb)
+  
+  # get issue log and write to file
+  issues <- getIssueLog(dpID=dpID, token=token)
+  utils::write.csv(issues, paste0(filepath, "/issueLog_", dpID, ".csv"),
+                   row.names=FALSE)
+  
+  # get DOIs and generate citation(s)
+  releases <- unique(releases)
+  if("PROVISIONAL" %in% releases) {
+    cit <- try(getCitation(dpID=dpID, release="PROVISIONAL"), silent=TRUE)
+    if(!inherits(cit, "try-error")) {
+      base::write(cit, paste0(filepath, "/citation_", dpID, "_PROVISIONAL", ".txt"))
+    }
+  }
+  if(length(grep("RELEASE", releases))==0) {
+    releases <- releases
+  } else {
+    if(length(grep("RELEASE", releases))==1) {
+      rel <- releases[grep("RELEASE", releases)]
+      cit <- try(getCitation(dpID=dpID, release=rel), silent=TRUE)
+      if(!inherits(cit, "try-error")) {
+        base::write(cit, paste0(filepath, "/citation_", dpID, "_", rel, ".txt"))
+      }
+    }
+  }
 
-  writeLines(paste("Successfully downloaded ", length(messages), " files."))
-  writeLines(paste0(messages, collapse = "\n"))
+  message(paste("Successfully downloaded ", j, " files to ", filepath, sep=""))
 }

@@ -25,17 +25,32 @@
 unzipZipfileParallel <- function(zippath, outpath = substr(zippath, 1, nchar(zippath)-4), level="all", nCores=1){
 
   if(level == "all") {
+    tl <- utils::unzip(zipfile = zippath, list=TRUE)
+    if(any(nchar(tl)>260) & Sys.info()[["sysname"]]=="Windows") {
+      stop(paste("Longest filepath is", max(nchar(tl)), "characters long. Filepaths on Windows are limited to 260 characters. Move files closer to the root directory."))
+    }
+    
     utils::unzip(zipfile = zippath, exdir=outpath)
     zps <- listZipfiles(zippath)
-    writeLines(paste0("Unpacking zip files using ", nCores, " cores."))
+    message(paste0("Unpacking zip files using ", nCores, " cores."))
 
     if(length(zps) >= 1){
 
-      cl <- parallel::makeCluster(getOption("cl.cores", nCores))
+      cl <- parallel::makeCluster(getOption("cl.cores", nCores), 
+                                  setup_strategy='sequential')
       suppressWarnings(on.exit(parallel::stopCluster(cl)))
 
       pbapply::pblapply(zps, function(z, outpath) {
         o <- paste0(outpath, "/", basename(unlist(z)))
+        
+        l <- utils::unzip(o, list=TRUE)
+        nl <- nchar(l$Name) + nchar(o) - 3
+        if(any(nl>260) & Sys.info()[["sysname"]]=="Windows") {
+          nll <- paste(substr(o, 1, nchar(o)-4), 
+                       l$Name[which(nchar(l$Name)==max(nchar(l$Name)))][1], sep="/")
+          stop(paste("Filepath", nll, "is", nchar(nll), "characters long. Filepaths on Windows are limited to 260 characters. Move files closer to the root directory, or, if you are using loadByProduct(), switch to using zipsByProduct() followed by stackByTable()."))
+        }
+        
         utils::unzip(o, exdir=substr(o, 1, nchar(o)-4))
         if (file.exists(o)) {
           file.remove(o) }
@@ -43,25 +58,35 @@ unzipZipfileParallel <- function(zippath, outpath = substr(zippath, 1, nchar(zip
       outpath=outpath, cl=cl)
 
     } else {
-      writeLines("This zip file doesn't contain monthly data packages") }
+      message("This zip file doesn't contain monthly data packages") }
     return(zps)
   }
 
   if(level == "in") {
     zps <- as.list(grep(list.files(zippath, full.names=TRUE), pattern = '*.zip', value=TRUE))
-    writeLines(paste0("Unpacking zip files using ", nCores, " cores."))
+    message(paste0("Unpacking zip files using ", nCores, " cores."))
 
     if(length(zps) >= 1) {
 
-      cl <- parallel::makeCluster(getOption("cl.cores", nCores))
+      cl <- parallel::makeCluster(getOption("cl.cores", nCores),
+                                  setup_strategy='sequential')
       suppressWarnings(on.exit(parallel::stopCluster(cl)))
 
       pbapply::pblapply(zps, function(z, outpath) {
         o <- paste0(outpath, "/", basename(unlist(z)))
         if(!file.exists(substr(o, 1, nchar(o)-4))) {
+          
+          l <- utils::unzip(z, list=TRUE)
+          nl <- nchar(l$Name) + nchar(o) - 3
+          if(any(nl>260) & Sys.info()[["sysname"]]=="Windows") {
+            nll <- paste(substr(o, 1, nchar(o)-4), 
+                         l$Name[which(nchar(l$Name)==max(nchar(l$Name)))][1], sep="/")
+            stop(paste("Filepath", nll, "is", nchar(nll), "characters long. Filepaths on Windows are limited to 260 characters. Move files closer to the root directory, or, if you are using loadByProduct(), switch to using zipsByProduct() followed by stackByTable()."))
+          }
+          
           utils::unzip(z, exdir=substr(o, 1, nchar(o)-4))
         } else {
-          writeLines(paste0("Skipping ",  z, " because these files have already been unpacked."))
+          message(paste0("Skipping ",  z, " because these files have already been unpacked."))
         }
         if (file.exists(z)) {
             file.remove(z)
@@ -69,7 +94,7 @@ unzipZipfileParallel <- function(zippath, outpath = substr(zippath, 1, nchar(zip
         },
         outpath=outpath, cl=cl)
     } else {
-        writeLines("This zip file doesn't contain monthly data packages")
+        message("This zip file doesn't contain monthly data packages")
     }
     return(zps)
   }

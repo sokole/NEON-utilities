@@ -10,11 +10,12 @@ zipsByURI(
   pick.files = FALSE,
   check.size = TRUE,
   unzip = TRUE,
-  saveZippedFiles = FALSE
+  saveZippedFiles = FALSE,
+  token = NA_character_
 )
 }
 \arguments{
-\item{filepath}{The location of the NEON data containing URIs}
+\item{filepath}{The location of the NEON data containing URIs. Can be either a local directory containing NEON tabular data or a list object containing tabular data.}
 
 \item{savepath}{The location to save the output files from the ECS bucket, optional. 
 Defaults to creating a "ECS_zipFiles" folder in the filepath directory.}
@@ -29,6 +30,8 @@ Defaults to T. When working in batch mode, or other non-interactive workflow, us
 unzipped into the same directory, defaults to T. Supports .zip and .tar.gz files currently.}
 
 \item{saveZippedFiles}{T or F: should the zip files be retained after unzipping? Defaults to F.}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts). Optional.}
 }
 \value{
 A folder in the working directory (or in savepath, if specified), containing all files meeting query criteria.

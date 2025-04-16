@@ -4,7 +4,16 @@
 \alias{getZipUrls}
 \title{Get and store the file names, S3 URLs, file size, and download status (default = 0) in a data frame}
 \usage{
-getZipUrls(month.urls, avg, package, dpID, messages)
+getZipUrls(
+  month.urls,
+  avg,
+  package,
+  dpID,
+  release,
+  tabl,
+  include.provisional,
+  token = NA_character_
+)
 }
 \arguments{
 \item{month.urls}{The monthly API URL for the URL files}
@@ -15,7 +24,13 @@ getZipUrls(month.urls, avg, package, dpID, messages)
 
 \item{dpID}{Global variable for data product ID}
 
-\item{messages}{Error/warning messages from previous steps}
+\item{release}{Data release to be downloaded}
+
+\item{tabl}{Table name to get}
+
+\item{include.provisional}{Should provisional data be included?}
+
+\item{token}{User specific API token (generated within data.neonscience.org user accounts)}
 }
 \value{
 A dataframe comprised of file names, S3 URLs, file size, and download status (default = 0)
