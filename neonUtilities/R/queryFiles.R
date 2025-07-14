@@ -40,12 +40,15 @@ queryFiles <- function(dpID, site="all", startdate=NA, enddate=NA,
     token <- NA_character_
   }
   
+  # check for expiration
+  token <- tokenCheck(token)
+  
   # check for GCS and S3 enabled
   if(!arrow::arrow_with_gcs()) {
     if(!arrow::arrow_with_s3()) {
-      stop("Package arrow is installed with S3 and GCS disabled. Consult documentation at https://arrow.apache.org/docs/r/articles/fs.html , update installation and re-try.")
+      stop("Package arrow is installed with S3 and GCS disabled and cannot access NEON data. Consult documentation at https://arrow.apache.org/docs/r/articles/fs.html , update installation and re-try.")
     } else {
-      message("Package arrow is installed with GCS disabled. S3 will be used to access data; performance may be reduced.")
+      message("Package arrow is installed with GCS disabled. S3 will be used to access data; performance may be reduced. To enable GCS consult documentation at https://arrow.apache.org/docs/r/articles/fs.html ")
     }
   }
   
@@ -149,53 +152,159 @@ queryFiles <- function(dpID, site="all", startdate=NA, enddate=NA,
     }
   }
   
+  # get list of files for each site-month
+  names(relall$packages) <- relall$release
   packall <- relall$packages
   fllst <- list()
   for(i in 1:length(packall)) {
-    fllst <- c(fllst, packall[[i]]$files)
+    fltmp <- packall[[i]]$files
+    names(fltmp) <- paste(names(packall)[i], packall[[i]]$siteCode, 
+                          packall[[i]]$month, sep=".")
+    fllst <- c(fllst, fltmp)
   }
-  urllst <- character()
-  for(j in 1:length(fllst)) {
-    urllst <- c(urllst, fllst[[j]]$url)
-  }
-  
-  # drop default base url
-  urllst <- base::gsub(pattern="https://storage.googleapis.com/", 
-                       replacement="", urllst)
-  
-  # add GCS base url, if GCS is enabled
-  if(arrow::arrow_with_gcs()) {
-    urllst <- paste("gs://anonymous@", urllst, sep="")
-  } else {
-    # S3 base url and suffix if GCS is not enabled
-    urllst <- paste("s3://", urllst, 
-                   "/?endpoint_override=https%3A%2F%2Fstorage.googleapis.com", sep="")
-  }
-  
-  # get most recent variables file
-  varfls <- base::grep("variables", urllst, value=TRUE)
-  varfl <- getRecentPublication(varfls)[[1]]
   
   # subset by time index or table, if relevant
+  # make data frame of urls, checksums for each file, and checksum of corresponding variables file
+  flset <- character()
+  relnames <- strsplit(names(fllst), split='.', fixed=TRUE)
   if(timeIndex=="all" & tabl=="all") {
-    return(urllst)
+    for(j in 1:length(fllst)) {
+      flsetk <- cbind(fllst[[j]]$url, 
+                      fllst[[j]]$md5,
+                      rep(ifelse(length(grep(pattern="variables", 
+                                             x=fllst[[j]]$url))==1,
+                                 fllst[[j]]$md5[grep(pattern="variables", 
+                                                     x=fllst[[j]]$url)], 
+                                 NA_character_),
+                          length(fllst[[j]]$url)),
+                      rep(ifelse(length(grep(pattern="variables", 
+                                             x=fllst[[j]]$url))==1,
+                                 fllst[[j]]$url[grep(pattern="variables", 
+                                                     x=fllst[[j]]$url)], 
+                                 NA_character_),
+                          length(fllst[[j]]$url)),
+                      rep(relnames[[j]][1], length(fllst[[j]]$url)))
+      flset <- rbind(flset, flsetk)
+    }
+    
   } else {
     if(timeIndex!="all") {
-      urllst <- base::grep(pattern=paste(timeIndex, "min|", timeIndex, 
-                                   "_min|science_review_flags|variables|readme|sensor_positions|categoricalCodes", 
-                                   sep=""),
-                     urllst, value=TRUE)
+      tiInd <- lapply(fllst, FUN=function(x) {
+        base::grep(pattern=paste(timeIndex, "min|", timeIndex, 
+                                 "_min|science_review_flags|variables|readme|sensor_positions|categoricalCodes", 
+                                 sep=""),
+                   x=x$url)
+      })
+      for(k in 1:length(tiInd)) {
+        kInd <- tiInd[[k]]
+        flsetk <- cbind(fllst[[k]]$url[kInd], 
+                        fllst[[k]]$md5[kInd],
+                        rep(ifelse(length(grep(pattern="variables", 
+                                               x=fllst[[k]]$url))==1,
+                                   fllst[[k]]$md5[grep(pattern="variables", 
+                                                       x=fllst[[k]]$url)], 
+                                   NA_character_),
+                            length(fllst[[k]]$url[kInd])),
+                        rep(ifelse(length(grep(pattern="variables", 
+                                               x=fllst[[k]]$url))==1,
+                                   fllst[[k]]$url[grep(pattern="variables", 
+                                                       x=fllst[[k]]$url)], 
+                                   NA_character_),
+                            length(fllst[[k]]$url[kInd])),
+                        rep(relnames[[k]][1], length(fllst[[k]]$url[kInd])))
+        flset <- rbind(flset, flsetk)
+      }
     }
+    
     if(tabl!="all") {
-      urllst <- base::grep(pattern=paste("[.]", tabl, "[.]|variables|readme|sensor_positions|categoricalCodes", 
-                                   sep=""),
-                     urllst, value=TRUE)
-      if(!metadata) {
-        # subset to only the table, if requested
-        urllst <- base::grep(tabl, urllst, value=TRUE)
+      tabInd <- lapply(fllst, FUN=function(x) {
+        base::grep(pattern=paste("[.]", tabl, "[.]|variables|readme|sensor_positions|categoricalCodes", 
+                                 sep=""),
+                   x=x$url)
+      })
+      for(k in 1:length(tabInd)) {
+        kInd <- tabInd[[k]]
+        flsetk <- cbind(fllst[[k]]$url[kInd], 
+                        fllst[[k]]$md5[kInd],
+                        rep(ifelse(length(grep(pattern="variables", 
+                                               x=fllst[[k]]$url))==1,
+                                   fllst[[k]]$md5[grep(pattern="variables", 
+                                                       x=fllst[[k]]$url)], 
+                                   NA_character_),
+                            length(fllst[[k]]$url[kInd])),
+                        rep(ifelse(length(grep(pattern="variables", 
+                                               x=fllst[[k]]$url))==1,
+                                   fllst[[k]]$url[grep(pattern="variables", 
+                                                       x=fllst[[k]]$url)], 
+                                   NA_character_),
+                            length(fllst[[k]]$url[kInd])),
+                        rep(relnames[[k]][1], length(fllst[[k]]$url[kInd])))
+        flset <- rbind(flset, flsetk)
       }
     }
   }
   
-  return(list(urllst, varfl))
+  flset <- data.frame(flset)
+  colnames(flset) <- c("url","md5","md5var","urlvar","release")
+  
+  # drop default base url, but keep a copy of original
+  flset$urlbase <- flset$url
+  flset$url <- base::gsub(pattern="https://storage.googleapis.com/", 
+                       replacement="", flset$url)
+  flset$urlvar <- base::gsub(pattern="https://storage.googleapis.com/", 
+                          replacement="", flset$urlvar)
+  
+  # add GCS base url, if GCS is enabled
+  if(arrow::arrow_with_gcs()) {
+    flset$url <- paste("gs://anonymous@", flset$url, sep="")
+    flset$urlvar <- paste("gs://anonymous@", flset$urlvar, sep="")
+  } else {
+    # S3 base url and suffix if GCS is not enabled
+    flset$url <- paste("s3://", flset$url, 
+                    "/?endpoint_override=https%3A%2F%2Fstorage.googleapis.com", sep="")
+    flset$urlvar <- paste("s3://", flset$urlvar, 
+                       "/?endpoint_override=https%3A%2F%2Fstorage.googleapis.com", sep="")
+  }
+  
+  # get most recent variables file
+  # if multiple checksums for variables files, raise a flag
+  varset <- list()
+  varfls <- base::grep(pattern="variables", x=flset$url, value=TRUE)
+  if(length(unique(flset$md5var))>1) {
+    varu <- unique(flset$md5var)
+    for(k in varu) {
+      varset[[k]] <- getRecentPublication(flset$url[which(flset$md5==k)])[[1]]
+    }
+    vardiff <- TRUE
+  } else {
+    vardiff <- FALSE
+  }
+  varfl <- getRecentPublication(varfls)[[1]]
+  
+  if(isFALSE(metadata)) {
+    # subset to only the table, if requested
+    # keep variables files
+    nmInd <- base::grep(pattern=paste("[.]", tabl, "[.]", sep=""), 
+                        x=flset$url)
+    flset <- flset[nmInd,]
+    urllst <- flset$url
+  } else {
+    urllst <- flset$url
+  }
+  # check for no data
+  if(length(urllst)==0) {
+    message(paste("No files found for table ", tabl, " in ", 
+                  package, " package", sep=""))
+    return(invisible())
+  } else {
+    # if only metadata, print message but still return the metadata files
+    if(tabl!="all" & length(base::grep(pattern=paste("[.]", tabl, "[.]", sep=""), x=urllst))==0) {
+      message(paste("No files found for table ", tabl, ", only metadata.", sep=""))
+    }
+  }
+  
+  # if vardiff is FALSE, only need urllst (set of urls to stack) and varfl (variables file to use)
+  # if vardiff is TRUE, need the set of all urls, including variables files
+  return(list(files=urllst, variables=varfl, varcheck=vardiff, 
+              filesall=flset, varset=varset))
 }

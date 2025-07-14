@@ -6,7 +6,7 @@
 
 #' @description Accesses the API with options to use the user-specific API token generated within data.neonscience.org user accounts.
 #'
-#'
+#' @keywords internal
 #' @param apiURL The API endpoint URL
 #' @param token User specific API token (generated within data.neonscience.org user accounts). Optional.
 
@@ -53,7 +53,8 @@ getAPI <- function(apiURL, token=NA_character_){
         if(req$headers$`x-ratelimit-remaining`<=1) {
           message(paste("Rate limit reached. Pausing for ", 
                     req$headers$`x-ratelimit-reset`,
-                    " seconds to reset.", sep=""))
+                    " seconds to reset. For faster downloads, use a NEON user account and API token. Instructions here: https://www.neonscience.org/resources/learning-hub/tutorials/neon-api-tokens-tutorial", 
+                    sep=""))
           Sys.sleep(req$headers$`x-ratelimit-reset`)
           j <- j+1
         } else {
